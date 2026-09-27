@@ -344,6 +344,8 @@
   <string name="msg_product_name_obf">Product name for barcode is from Open Beauty Facts.</string>
   <string name="msg_product_name_lookup_error">Barcode could not be looked up on Open Food Facts or Open Beauty Facts.</string>
   <string name="msg_product_name_lookup_empty">Barcode is not in Open Food Facts or Open Beauty Facts database.</string>
+  <string name="msg_product_name_server">Product name for barcode is from the server barcode lookup.</string>
+  <string name="msg_product_name_server_created">Product was created on the server (ID %1$d), you can pick it from the list below.</string>
   <string name="msg_off_option_deactivated">For automatic suggestion of a product name you can activate Open Food Facts look up in the settings.</string>
   <string name="msg_create_new_product_filled">Create new product \"%1$s\"</string>
   <string name="msg_create_new_product">Create new product</string>

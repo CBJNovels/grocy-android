@@ -376,6 +376,20 @@ public class GrocyApi {
     return getUrl("/stock/products/by-barcode/" + barcode);
   }
 
+  /**
+   * Runs the server side external barcode lookup, i.e. the plugin configured via
+   * STOCK_BARCODE_LOOKUP_PLUGIN, for the given barcode.
+   *
+   * <p>With add=true the product is created on the server when the lookup succeeds
+   * (the created product id is part of the response). Note that the server rejects
+   * the request with "Product ... already exists" if a product of that name is
+   * already present, so callers should only use add=true for unknown barcodes.
+   */
+  public String getStockBarcodeExternalLookup(String barcode, boolean add) {
+    return getBaseUrl() + "/api/stock/barcodes/external-lookup/" + barcode
+        + "?add=" + (add ? "true" : "false");
+  }
+
   // SHOPPING LIST
 
   /**

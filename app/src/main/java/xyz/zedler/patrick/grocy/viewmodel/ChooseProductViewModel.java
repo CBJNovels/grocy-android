@@ -32,7 +32,10 @@ import java.util.HashMap;
 import java.util.List;
 import me.xdrop.fuzzywuzzy.FuzzySearch;
 import me.xdrop.fuzzywuzzy.model.BoundExtractedResult;
+import org.json.JSONException;
+import org.json.JSONObject;
 import xyz.zedler.patrick.grocy.R;
+import xyz.zedler.patrick.grocy.api.GrocyApi;
 import xyz.zedler.patrick.grocy.helper.DownloadHelper;
 import xyz.zedler.patrick.grocy.model.Event;
 import xyz.zedler.patrick.grocy.model.OpenBeautyFactsProduct;
@@ -72,6 +75,7 @@ public class ChooseProductViewModel extends BaseViewModel {
   private final boolean pendingProductsActive;
   private String nameFromOnlineSource;
   private final boolean debug;
+  private boolean serverLookupAttempted = false;
 
   public ChooseProductViewModel(
       @NonNull Application application,
@@ -213,7 +217,90 @@ public class ChooseProductViewModel extends BaseViewModel {
   public void fillProductNameIfPossible() {
     boolean productNameFilled = productNameLive.getValue() != null
         && !productNameLive.getValue().isEmpty();
-    if(isOpenFoodFactsEnabled() && !productNameFilled) {
+    if (productNameFilled) {
+      return;
+    }
+
+    // Ask the server first: it runs the configured STOCK_BARCODE_LOOKUP_PLUGIN and
+    // therefore knows sources the app cannot reach itself (e.g. regional databases).
+    lookupOnServerThenOpenFoodFacts();
+  }
+
+  /**
+   * Tries the server side external barcode lookup and falls back to the client side
+   * Open Food Facts / Open Beauty Facts lookup.
+   *
+   * <p>Guarded by {@link #serverLookupAttempted} because this method sits in the
+   * funnel that also runs after every data sync, and because the server rejects
+   * add=true with "Product ... already exists" once the product is there.
+   */
+  private void lookupOnServerThenOpenFoodFacts() {
+    if (serverLookupAttempted) {
+      lookupOnOpenFoodFacts();
+      return;
+    }
+    serverLookupAttempted = true;
+
+    String url = new GrocyApi(getApplication())
+        .getStockBarcodeExternalLookup(barcode, true);
+    dlHelper.get(
+        url,
+        TAG,
+        this::onServerLookupResponse,
+        error -> {
+          // Typical reasons: the product already exists on the server (name clash),
+          // no permission, or no network. Sync once so that an already existing
+          // product shows up in the list below and can be picked.
+          downloadData(true);
+        }
+    );
+  }
+
+  private void onServerLookupResponse(String response) {
+    if (response == null || response.trim().isEmpty()
+        || "null".equals(response.trim())) {
+      // Nothing found server side
+      lookupOnOpenFoodFacts();
+      return;
+    }
+
+    try {
+      JSONObject product = new JSONObject(response);
+      String name = product.optString("name", "");
+      if (name.isEmpty()) {
+        lookupOnOpenFoodFacts();
+        return;
+      }
+
+      productNameLive.setValue(name);
+      nameFromOnlineSource = name;
+
+      // grocy returns the new product id as a JSON string, so parse it explicitly
+      int id = 0;
+      try {
+        id = Integer.parseInt(product.optString("id", "0"));
+      } catch (NumberFormatException ignored) {
+        // no id in response, the product was not created
+      }
+
+      offHelpText.setValue(id > 0
+          ? getString(R.string.msg_product_name_server_created, id)
+          : getString(R.string.msg_product_name_server));
+
+      // Pull the product created on the server into the local database so it can
+      // be selected from the list right away.
+      downloadData(true);
+    } catch (JSONException e) {
+      lookupOnOpenFoodFacts();
+    }
+  }
+
+  /**
+   * Original client side lookup, unchanged apart from being extracted into its own
+   * method so it can be used as fallback.
+   */
+  private void lookupOnOpenFoodFacts() {
+    if (isOpenFoodFactsEnabled()) {
       OpenFoodFactsProduct.getOpenFoodFactsProduct(
           dlHelper,
           barcode,
@@ -242,7 +329,7 @@ public class ChooseProductViewModel extends BaseViewModel {
               }
           )
       );
-    } else if (!productNameFilled) {
+    } else {
       sendEvent(Event.FOCUS_INVALID_VIEWS);
     }
   }
