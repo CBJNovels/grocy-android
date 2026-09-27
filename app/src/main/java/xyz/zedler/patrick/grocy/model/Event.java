@@ -42,6 +42,11 @@ public abstract class Event {
   public final static int FOCUS_AMOUNT_FIELD = 30;
   public final static int UPDATE_BOTTOM_APP_BAR = 32;
   public final static int SCROLL_UP = 34;
+  /**
+   * The server side barcode lookup created a product for the scanned barcode
+   * (external lookup with add=true). The bundle carries the new product id.
+   */
+  public final static int PRODUCT_CREATED_ON_SERVER = 36;
 
   abstract public int getType();
 

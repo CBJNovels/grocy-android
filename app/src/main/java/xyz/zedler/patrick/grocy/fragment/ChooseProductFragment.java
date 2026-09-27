@@ -138,6 +138,16 @@ public class ChooseProductFragment extends BaseFragment
       } else if (event.getType() == Event.BOTTOM_SHEET) {
         BottomSheetEvent bottomSheetEvent = (BottomSheetEvent) event;
         activity.showBottomSheet(bottomSheetEvent.getBottomSheet(), event.getBundle());
+      } else if (event.getType() == Event.PRODUCT_CREATED_ON_SERVER) {
+        // The server side barcode lookup created the product and bound the barcode
+        // already. Return the product id only - deliberately no ARGUMENT.BARCODE,
+        // otherwise the calling flow would try to upload the barcode once more.
+        setForPreviousDestination(
+            Constants.ARGUMENT.PRODUCT_ID,
+            event.getBundle().getInt(Constants.ARGUMENT.PRODUCT_ID)
+        );
+        setForPreviousDestination(ARGUMENT.BACK_FROM_CHOOSE_PRODUCT_PAGE, true);
+        activity.navUtil.navigateUp();
       } else if (event.getType() == Event.FOCUS_INVALID_VIEWS) {
         activity.showKeyboard(binding.editTextProduct);
       }

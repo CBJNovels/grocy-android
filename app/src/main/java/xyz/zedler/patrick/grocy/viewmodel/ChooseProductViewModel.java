@@ -22,6 +22,7 @@ package xyz.zedler.patrick.grocy.viewmodel;
 
 import android.app.Application;
 import android.content.SharedPreferences;
+import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
@@ -34,6 +35,7 @@ import me.xdrop.fuzzywuzzy.FuzzySearch;
 import me.xdrop.fuzzywuzzy.model.BoundExtractedResult;
 import org.json.JSONException;
 import org.json.JSONObject;
+import xyz.zedler.patrick.grocy.Constants;
 import xyz.zedler.patrick.grocy.R;
 import xyz.zedler.patrick.grocy.api.GrocyApi;
 import xyz.zedler.patrick.grocy.helper.DownloadHelper;
@@ -283,12 +285,21 @@ public class ChooseProductViewModel extends BaseViewModel {
         // no id in response, the product was not created
       }
 
-      offHelpText.setValue(id > 0
-          ? getString(R.string.msg_product_name_server_created, id)
-          : getString(R.string.msg_product_name_server));
+      if (id > 0) {
+        // The server created the product and already bound the barcode to it.
+        // Hand that product straight back to the calling screen instead of leaving
+        // the barcode in the form: the calling flow (consume/purchase/inventory)
+        // would otherwise upload the very same barcode again, which the server
+        // rejects because product_barcodes.barcode is unique.
+        Bundle bundle = new Bundle();
+        bundle.putInt(Constants.ARGUMENT.PRODUCT_ID, id);
+        sendEvent(Event.PRODUCT_CREATED_ON_SERVER, bundle);
+        return;
+      }
 
-      // Pull the product created on the server into the local database so it can
-      // be selected from the list right away.
+      offHelpText.setValue(getString(R.string.msg_product_name_server));
+
+      // Nothing was created on the server, just show the name we got.
       downloadData(true);
     } catch (JSONException e) {
       lookupOnOpenFoodFacts();
